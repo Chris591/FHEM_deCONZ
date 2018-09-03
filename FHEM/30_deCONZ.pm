@@ -1,6 +1,4 @@
 
-# $Id: 30_deCONZ.pm 16310 2018-03-02 10:43:36Z chris591 $
-
 # "Hue Personal Wireless Lighting" is a trademark owned by Koninklijke Philips Electronics N.V.,
 # see www.meethue.com for more information.
 # I am in no way affiliated with the Philips organization.
