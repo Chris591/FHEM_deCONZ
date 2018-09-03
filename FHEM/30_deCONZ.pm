@@ -1203,7 +1203,7 @@ deCONZ_Autocreate($;$)
       $cmdret= CommandAttr(undef,"$devname room deCONZ");
       $cmdret= CommandAttr(undef,"$devname IODev $name");
 
-      deCONZSetIcon($devname);
+      deCONZdeviceSetIcon($devname);
       $defs{$devname}{helper}{fromAutocreate} = 1 ;
 
       $autocreated++;
@@ -1236,7 +1236,7 @@ deCONZ_Autocreate($;$)
       $cmdret= CommandAttr(undef,"$devname group deCONZGroup");
       $cmdret= CommandAttr(undef,"$devname IODev $name");
 
-      deCONZSetIcon($devname);
+      deCONZdeviceSetIcon($devname);
       $defs{$devname}{helper}{fromAutocreate} = 1 ;
 
       $autocreated++;
