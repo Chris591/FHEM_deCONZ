@@ -22,7 +22,7 @@ sub deCONZ_Initialize($)
   # Provider
   $hash->{ReadFn}  = "deCONZ_Read";
   $hash->{WriteFn} = "deCONZ_Write";
-  $hash->{Clients} = ":deCONZ:";
+  $hash->{Clients} = ":deCONZdevice:";
 
   #Consumer
   $hash->{DefFn}    = "deCONZ_Define";
@@ -100,9 +100,9 @@ deCONZ_Read($)
             return;
           }
 
-          my $chash = $modules{deCONZ}{defptr}{$code};
+          my $chash = $modules{deCONZdevice}{defptr}{$code};
           if( defined($chash) ) {
-            deCONZ_Parse($chash,$obj);
+            deCONZdevice_Parse($chash,$obj);
             deCONZ_updateGroups($hash, $chash->{ID}) if( !$chash->{helper}{devtype} );
           } else {
             Log3 $name, 4, "$name: message for unknow device received: $code";
@@ -453,7 +453,7 @@ deCONZ_string2array($)
   my %lights = ();
   foreach my $part ( split(',', $lights) ) {
     my $light = $part;
-    $light = $defs{$light}{ID} if( defined $defs{$light} && $defs{$light}{TYPE} eq 'deCONZ' );
+    $light = $defs{$light}{ID} if( defined $defs{$light} && $defs{$light}{TYPE} eq 'deCONZdevice' );
     if( $light =~ m/^G/ ) {
       my $lights = $defs{$part}->{lights};
       if( $lights ) {
@@ -526,14 +526,14 @@ deCONZ_Set($@)
   } elsif($cmd eq 'delete') {
     return "usage: delete <id>" if( @args != 1 );
 
-    if( defined $defs{$arg} && $defs{$arg}{TYPE} eq 'deCONZ' ) {
+    if( defined $defs{$arg} && $defs{$arg}{TYPE} eq 'deCONZdevice' ) {
       $arg = $defs{$arg}{ID};
     }
     return "$arg is not a deCONZ light number" if( $arg !~ m/^\d+$/ );
 
     my $code = $name ."-". $arg;
-    if( defined($modules{deCONZ}{defptr}{$code}) ) {
-      CommandDelete( undef, "$modules{deCONZ}{defptr}{$code}{NAME}" );
+    if( defined($modules{deCONZdevice}{defptr}{$code}) ) {
+      CommandDelete( undef, "$modules{deCONZdevice}{defptr}{$code}{NAME}" );
       CommandSave(undef,undef) if( AttrVal( "autocreate", "autosave", 1 ) );
     }
 
@@ -556,7 +556,7 @@ deCONZ_Set($@)
       deCONZ_Autocreate($hash);
 
       my $code = $name ."-G". $result->{success}{id};
-      return "created $modules{deCONZ}{defptr}{$code}->{NAME}" if( defined($modules{deCONZ}{defptr}{$code}) );
+      return "created $modules{deCONZdevice}{defptr}{$code}->{NAME}" if( defined($modules{deCONZdevice}{defptr}{$code}) );
     }
 
     return undef;
@@ -564,15 +564,15 @@ deCONZ_Set($@)
   } elsif($cmd eq 'deletegroup') {
     return "usage: deletegroup <id>" if( @args != 1 );
 
-    if( defined $defs{$arg} && $defs{$arg}{TYPE} eq 'deCONZ' ) {
+    if( defined $defs{$arg} && $defs{$arg}{TYPE} eq 'deCONZdevice' ) {
       return "$arg is not a deCONZ group" if( $defs{$arg}{ID} != m/^G/ );
       $defs{$arg}{ID} =~ m/G(.*)/;
       $arg = $1;
     }
 
     my $code = $name ."-G". $arg;
-    if( defined($modules{deCONZ}{defptr}{$code}) ) {
-      CommandDelete( undef, "$modules{deCONZ}{defptr}{$code}{NAME}" );
+    if( defined($modules{deCONZdevice}{defptr}{$code}) ) {
+      CommandDelete( undef, "$modules{deCONZdevice}{defptr}{$code}{NAME}" );
       CommandSave(undef,undef) if( AttrVal( "autocreate", "autosave", 1 ) );
     }
 
@@ -617,18 +617,18 @@ deCONZ_Set($@)
     return "usage: modifyscene <id> <light> <light args>" if( @args < 3 );
 
     my( $light, @aa ) = @params;
-    $light = $defs{$light}{ID} if( defined $defs{$light} && $defs{$light}{TYPE} eq 'deCONZ' );
+    $light = $defs{$light}{ID} if( defined $defs{$light} && $defs{$light}{TYPE} eq 'deCONZdevice' );
 
     my %obj;
     if( (my $joined = join(" ", @aa)) =~ /:/ ) {
       my @cmds = split(":", $joined);
       for( my $i = 0; $i <= $#cmds; ++$i ) {
-        deCONZ_SetParam(undef, \%obj, split(" ", $cmds[$i]) );
+        deCONZdevice_SetParam(undef, \%obj, split(" ", $cmds[$i]) );
       }
     } else {
       my ($cmd, $value, $value2, @a) = @aa;
 
-      deCONZ_SetParam(undef, \%obj, $cmd, $value, $value2);
+      deCONZdevice_SetParam(undef, \%obj, $cmd, $value, $value2);
     }
 
     my $result;
@@ -722,15 +722,15 @@ deCONZ_Set($@)
 
 #    if( $result->{success} ) {
 #      my $code = $name ."-S". $result->{success}{id};
-#      my $devname = "deCONZ" . $id;
+#      my $devname = "deCONZdevice" . $id;
 #      $devname = $name ."_". $devname if( $hash->{helper}{count} );
-#      my $define = "$devname deCONZ sensor $id IODev=$name";
+#      my $define = "$devname deCONZdevice sensor $id IODev=$name";
 #
 #      Log3 $name, 4, "$name: create new device '$devname' for address '$id'";
 #
 #      my $cmdret= CommandDefine(undef,$define);
 #
-#      return "created $modules{deCONZ}{defptr}{$code}->{NAME}" if( defined($modules{deCONZ}{defptr}{$code}) );
+#      return "created $modules{deCONZdevice}{defptr}{$code}->{NAME}" if( defined($modules{deCONZdevice}{defptr}{$code}) );
 #    }
 
     return undef;
@@ -738,15 +738,15 @@ deCONZ_Set($@)
   } elsif($cmd eq 'deletesensor') {
     return "usage: deletesensor <id>" if( @args != 1 );
 
-    if( defined $defs{$arg} && $defs{$arg}{TYPE} eq 'deCONZ' ) {
+    if( defined $defs{$arg} && $defs{$arg}{TYPE} eq 'deCONZdevice' ) {
       return "$arg is not a deCONZ sensor" if( $defs{$arg}{ID} !~ m/^S/ );
       $defs{$arg}{ID} =~ m/S(.*)/;
       $arg = $1;
     }
 
     my $code = $name ."-S". $arg;
-    if( defined($modules{deCONZ}{defptr}{$code}) ) {
-      CommandDelete( undef, "$modules{deCONZ}{defptr}{$code}{NAME}" );
+    if( defined($modules{deCONZdevice}{defptr}{$code}) ) {
+      CommandDelete( undef, "$modules{deCONZdevice}{defptr}{$code}{NAME}" );
       CommandSave(undef,undef) if( AttrVal( "autocreate", "autosave", 1 ) );
     }
 
@@ -760,7 +760,7 @@ deCONZ_Set($@)
   } elsif($cmd eq 'configsensor' || $cmd eq 'setsensor' || $cmd eq 'updatesensor') {
     return "usage: $cmd <id> <json>" if( @args < 2 );
 
-    if( defined $defs{$arg} && $defs{$arg}{TYPE} eq 'deCONZ' ) {
+    if( defined $defs{$arg} && $defs{$arg}{TYPE} eq 'deCONZdevice' ) {
       return "$arg is not a deCONZ sensor" if( $defs{$arg}{ID} !~ m/^S/ );
       $defs{$arg}{ID} =~ m/S(.*)/;
       $arg = $1;
@@ -783,8 +783,8 @@ deCONZ_Set($@)
     return $result->{error}{description} if( $result->{error} );
 
     my $code = $name ."-S". $arg;
-    if( my $chash = $modules{deCONZ}{defptr}{$code} ) {
-      deCONZ_GetUpdate($chash);
+    if( my $chash = $modules{deCONZdevice}{defptr}{$code} ) {
+      deCONZdevice_GetUpdate($chash);
     }
 
     return undef;
@@ -858,7 +858,7 @@ deCONZ_Get($@)
     foreach my $key ( sort {$a<=>$b} keys %{$result} ) {
       my $code = $name ."-". $key;
       my $fhem_name ="";
-      $fhem_name = $modules{deCONZ}{defptr}{$code}->{NAME} if( defined($modules{deCONZ}{defptr}{$code}) );
+      $fhem_name = $modules{deCONZdevice}{defptr}{$code}->{NAME} if( defined($modules{deCONZdevice}{defptr}{$code}) );
       $ret .= sprintf( "%2i: %-25s %-15s %s\n", $key, $result->{$key}{name}, $fhem_name, $result->{$key}{type} );
     }
     $ret = sprintf( "%2s  %-25s %-15s %s\n", "ID", "NAME", "FHEM", "TYPE" ) .$ret if( $ret );
@@ -872,7 +872,7 @@ deCONZ_Get($@)
     foreach my $key ( sort {$a<=>$b} keys %{$result} ) {
       my $code = $name ."-G". $key;
       my $fhem_name ="";
-      $fhem_name = $modules{deCONZ}{defptr}{$code}->{NAME} if( defined($modules{deCONZ}{defptr}{$code}) );
+      $fhem_name = $modules{deCONZdevice}{defptr}{$code}->{NAME} if( defined($modules{deCONZdevice}{defptr}{$code}) );
       $result->{$key}{type} = '' if( !defined($result->{$key}{type}) );     #deCONZ fix
       $result->{$key}{class} = '' if( !defined($result->{$key}{class}) );   #deCONZ fix
       $result->{$key}{lights} = [] if( !defined($result->{$key}{lights}) ); #deCONZ fix
@@ -932,7 +932,7 @@ deCONZ_Get($@)
     foreach my $key ( sort {$a<=>$b} keys %{$result} ) {
       my $code = $name ."-S". $key;
       my $fhem_name ="";
-      $fhem_name = $modules{deCONZ}{defptr}{$code}->{NAME} if( defined($modules{deCONZ}{defptr}{$code}) );
+      $fhem_name = $modules{deCONZdevice}{defptr}{$code}->{NAME} if( defined($modules{deCONZdevice}{defptr}{$code}) );
       $ret .= sprintf( "%2i: %-15s %-15s %-20s", $key, $result->{$key}{name}, $fhem_name, $result->{$key}{type} );
       $ret .= sprintf( " %s", encode_json($result->{$key}{state}) ) if( $arg && $arg eq 'detail' );
       $ret .= sprintf( "\n%-56s %s", '', encode_json($result->{$key}{config}) ) if( $arg && $arg eq 'detail' );
@@ -1030,7 +1030,7 @@ deCONZ_updateGroups($$)
 
   my $groups = {};
   foreach my $light ( split(',', $lights) ) {
-    foreach my $chash ( values %{$modules{deCONZ}{defptr}} ) {
+    foreach my $chash ( values %{$modules{deCONZdevice}{defptr}} ) {
       next if( !$chash->{IODev} );
       next if( !$chash->{lights} );
       next if( $chash->{IODev}{NAME} ne $name );
@@ -1048,7 +1048,7 @@ deCONZ_updateGroups($$)
     my %readings;
     foreach my $light ( split(',', $chash->{lights}) ) {
       next if( !$light );
-      my $current = $modules{deCONZ}{defptr}{"$name-$light"}{helper};
+      my $current = $modules{deCONZdevice}{defptr}{"$name-$light"}{helper};
 
       $readings{ct} += $current->{ct};
       $readings{bri} += $current->{bri};
@@ -1184,14 +1184,14 @@ deCONZ_Autocreate($;$)
     my $id= $key;
 
     my $code = $name ."-". $id;
-    if( defined($modules{deCONZ}{defptr}{$code}) ) {
-      Log3 $name, 5, "$name: id '$id' already defined as '$modules{deCONZ}{defptr}{$code}->{NAME}'";
+    if( defined($modules{deCONZdevice}{defptr}{$code}) ) {
+      Log3 $name, 5, "$name: id '$id' already defined as '$modules{deCONZdevice}{defptr}{$code}->{NAME}'";
       next;
     }
 
-    my $devname = "deCONZ" . $id;
+    my $devname = "deCONZdevice" . $id;
     $devname = $name ."_". $devname if( $hash->{helper}{count} );
-    my $define= "$devname deCONZ $id IODev=$name";
+    my $define= "$devname deCONZdevice $id IODev=$name";
 
     Log3 $name, 4, "$name: create new device '$devname' for address '$id'";
 
@@ -1216,14 +1216,14 @@ deCONZ_Autocreate($;$)
     my $id= $key;
 
     my $code = $name ."-G". $id;
-    if( defined($modules{deCONZ}{defptr}{$code}) ) {
-      Log3 $name, 5, "$name: id '$id' already defined as '$modules{deCONZ}{defptr}{$code}->{NAME}'";
+    if( defined($modules{deCONZdevice}{defptr}{$code}) ) {
+      Log3 $name, 5, "$name: id '$id' already defined as '$modules{deCONZdevice}{defptr}{$code}->{NAME}'";
       next;
     }
 
     my $devname= "deCONZGroup" . $id;
     $devname = $name ."_". $devname if( $hash->{helper}{count} );
-    my $define= "$devname deCONZ group $id IODev=$name";
+    my $define= "$devname deCONZdevice group $id IODev=$name";
 
     Log3 $name, 4, "$name: create new group '$devname' for address '$id'";
 
@@ -1283,7 +1283,7 @@ deCONZ_ProcessResponse($$)
 
             } elsif( $l[1] eq 'groups' && $l[3] eq 'action' ) {
               my $code = $name ."-G". $l[2];
-              my $d = $modules{deCONZ}{defptr}{$code};
+              my $d = $modules{deCONZdevice}{defptr}{$code};
               if( my $lights = $d->{lights} ) {
                 foreach my $light ( split(',', $lights) ) {
                   $json{$light}->{state}->{$l[4]} = $success->{$key};
@@ -1303,9 +1303,9 @@ deCONZ_ProcessResponse($$)
       my $changed = "";
       foreach my $id ( keys %json ) {
         my $code = $name ."-". $id;
-        if( my $chash = $modules{deCONZ}{defptr}{$code} ) {
+        if( my $chash = $modules{deCONZdevice}{defptr}{$code} ) {
           #$json{$id}->{state}->{reachable} = 1;
-          if( deCONZ_Parse( $chash, $json{$id} ) ) {
+          if( deCONZdevice_Parse( $chash, $json{$id} ) ) {
             $changed .= "," if( $changed );
             $changed .= $chash->{ID};
           }
@@ -1567,10 +1567,10 @@ deCONZ_dispatch($$$;$)
           my $sensors = $json->{sensors};
           foreach my $id ( keys %{$sensors} ) {
             my $code = $name ."-S". $id;
-            my $chash = $modules{deCONZ}{defptr}{$code};
+            my $chash = $modules{deCONZdevice}{defptr}{$code};
 
             if( defined($chash) ) {
-              deCONZ_Parse($chash,$sensors->{$id});
+              deCONZdevice_Parse($chash,$sensors->{$id});
             } else {
               Log3 $name, 4, "$name: message for unknow sensor received: $code";
             }
@@ -1581,10 +1581,10 @@ deCONZ_dispatch($$$;$)
           my $groups = $json->{groups};
           foreach my $id ( keys %{$groups} ) {
             my $code = $name ."-G". $id;
-            my $chash = $modules{deCONZ}{defptr}{$code};
+            my $chash = $modules{deCONZdevice}{defptr}{$code};
 
             if( defined($chash) ) {
-              deCONZ_Parse($chash,$groups->{$id});
+              deCONZdevice_Parse($chash,$groups->{$id});
             } else {
               Log3 $name, 2, "$name: message for unknow group received: $code";
             }
@@ -1600,10 +1600,10 @@ deCONZ_dispatch($$$;$)
         my $lights = $json;
         foreach my $id ( keys %{$lights} ) {
           my $code = $name ."-". $id;
-          my $chash = $modules{deCONZ}{defptr}{$code};
+          my $chash = $modules{deCONZdevice}{defptr}{$code};
 
           if( defined($chash) ) {
-            if( deCONZ_Parse($chash,$lights->{$id}) ) {
+            if( deCONZdevice_Parse($chash,$lights->{$id}) ) {
               $changed .= "," if( $changed );
               $changed .= $chash->{ID};
             }
@@ -1623,25 +1623,25 @@ deCONZ_dispatch($$$;$)
       }
 
     } elsif( $type =~ m/^lights\/(\d*)$/ ) {
-      if( deCONZ_Parse($param->{chash},$json) ) {
+      if( deCONZdevice_Parse($param->{chash},$json) ) {
         deCONZ_updateGroups($hash, $param->{chash}{ID});
       }
 
     } elsif( $type =~ m/^groups\/(\d*)$/ ) {
-      deCONZ_Parse($param->{chash},$json);
+      deCONZdevice_Parse($param->{chash},$json);
 
     } elsif( $type =~ m/^sensors\/(\d*)$/ ) {
-      deCONZ_Parse($param->{chash},$json);
+      deCONZdevice_Parse($param->{chash},$json);
 
     } elsif( $type =~ m/^lights\/(\d*)\/state$/ ) {
       if( $queryAfterSet ) {
         my $chash = $param->{chash};
         if( $chash->{helper}->{update_timeout} ) {
           RemoveInternalTimer($chash);
-          InternalTimer(gettimeofday()+1, "deCONZ_GetUpdate", $chash, 0);
+          InternalTimer(gettimeofday()+1, "deCONZdevice_GetUpdate", $chash, 0);
         } else {
           RemoveInternalTimer($chash);
-          deCONZ_GetUpdate( $chash );
+          deCONZdevice_GetUpdate( $chash );
         }
       }
 
@@ -1649,10 +1649,10 @@ deCONZ_dispatch($$$;$)
       my $chash = $param->{chash};
       if( $chash->{helper}->{update_timeout} ) {
         RemoveInternalTimer($chash);
-        InternalTimer(gettimeofday()+1, "deCONZ_GetUpdate", $chash, 0);
+        InternalTimer(gettimeofday()+1, "deCONZdevice_GetUpdate", $chash, 0);
       } else {
         RemoveInternalTimer($chash);
-        deCONZ_GetUpdate( $chash );
+        deCONZdevice_GetUpdate( $chash );
       }
 
     } else {
@@ -1803,7 +1803,7 @@ deCONZ_Attr($$$)
 <ul>
   Module to access the deCONZ module.<br><br>
 
-  I try to support all devices that are supported by the <a href="#deCONZ">deCONZ</a> API.
+  I try to support all devices that are supported by the <a href="#deCONZdevice">deCONZdevice</a> API.
 
   <br><br>
   All newly found devices and groups are autocreated at startup and added to the room deCONZ.

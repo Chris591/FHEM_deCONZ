@@ -294,13 +294,13 @@ sub deCONZdevice_Define($$)
 
   my $code = $hash->{ID};
   $code = $iodev ."-". $code if( defined($iodev) );
-  my $d = $modules{deCONZ}{defptr}{$code};
+  my $d = $modules{deCONZdevice}{defptr}{$code};
   return "deCONZdevice device $hash->{ID} on deCONZ $iodev already defined as $d->{NAME}."
          if( defined($d)
              && $d->{IODev} && $hash->{IODev} && $d->{IODev} == $hash->{IODev}
              && $d->{NAME} ne $name );
 
-  $modules{deCONZ}{defptr}{$code} = $hash;
+  $modules{deCONZdevice}{defptr}{$code} = $hash;
 
   if( AttrVal($iodev, "pollDevices", 1) ) {
     $interval = undef unless defined($interval);
@@ -382,7 +382,7 @@ sub deCONZdevice_Undefine($$)
   my $code = $hash->{ID};
   $code = $hash->{IODev}->{NAME} ."-". $code if( defined($hash->{IODev}->{NAME}) );
 
-  delete($modules{deCONZ}{defptr}{$code});
+  delete($modules{deCONZdevice}{defptr}{$code});
 
   return undef;
 }
