@@ -3,6 +3,8 @@
 # see www.meethue.com for more information.
 # I am in no way affiliated with the Philips organization.
 
+# TODO remove unnessesary Functions and Code
+
 package main;
 
 use strict;
@@ -110,7 +112,7 @@ deCONZ_Read($)
 
         } elsif( $obj->{t} eq 'event' && $obj->{e} eq 'scene-called' ) {
           Log3 $name, 5, "$name: todo: handle websocket scene-called $data";
-          # trigger scene event ?
+          # TODO trigger scene event ?
 
         } elsif( $obj->{t} eq 'event' && $obj->{e} eq 'added' ) {
           Log3 $name, 5, "$name: websocket add: $data";
@@ -119,6 +121,7 @@ deCONZ_Read($)
         } elsif( $obj->{t} eq 'event' && $obj->{e} eq 'deleted' ) {
           Log3 $name, 5, "$name: todo: handle websocket delete $data";
           # do what ?
+          # TODO should we delete old devices?
 
         } else {
           Log3 $name, 5, "$name: unknown websocket data: $data";
@@ -1356,82 +1359,82 @@ deCONZ_Call($$$$;$)
   my $json = undef;
   $json = encode_json($obj) if $obj;
 
-  # @TODO: repeat twice?
-  for( my $attempt=0; $attempt<2; $attempt++ ) {
-    my $blocking;
+  # @TODO: remove the repeat twice?
+  # for( my $attempt=0; $attempt<2; $attempt++ ) {
+    # my $blocking;
     my $res = undef;
-    if( !defined($attr{$name}{httpUtils}) ) {
-      $blocking = 1;
-      $res = deCONZ_HTTP_Call($hash,$path,$json,$method);
-    } else {
-      $blocking = $attr{$name}{httpUtils} < 1;
+    # if( !defined($attr{$name}{httpUtils}) ) {
+    #   $blocking = 1;
+    #   $res = deCONZ_HTTP_Call($hash,$path,$json,$method);
+    # } else {
+      # $blocking = $attr{$name}{httpUtils} < 1;
       $res = deCONZ_HTTP_Call2($hash,$chash,$path,$json,$method);
-    }
+    # }
 
-    return $res if( !$blocking || defined($res) );
+    return $res;# if( !$blocking || defined($res) );
 
-    Log3 $name, 3, "deCONZ_Call: failed, retrying";
-    deCONZ_Detect($hash) if( defined($hash->{NUPNP}) );
-  }
+    # Log3 $name, 3, "deCONZ_Call: failed, retrying";
+    # deCONZ_Detect($hash) if( defined($hash->{NUPNP}) );
+  # }
 
-  Log3 $name, 3, "deCONZ_Call: failed";
-  return undef;
+  # Log3 $name, 3, "deCONZ_Call: failed";
+  # return undef;
 }
 
-#JSON RPC over HTTP
-sub
-deCONZ_HTTP_Call($$$;$)
-{
-  my ($hash,$path,$obj,$method) = @_;
-  my $name = $hash->{NAME};
+# #JSON RPC over HTTP
+# sub
+# deCONZ_HTTP_Call($$$;$)
+# {
+#   my ($hash,$path,$obj,$method) = @_;
+#   my $name = $hash->{NAME};
 
-  #return { state => {reachable => 0 } } if($attr{$name} && $attr{$name}{disable});
+#   #return { state => {reachable => 0 } } if($attr{$name} && $attr{$name}{disable});
 
-  my $uri = "http://" . $hash->{host} . "/api";
-  if( defined($obj) ) {
-    $method = 'PUT' if( !$method );
+#   my $uri = "http://" . $hash->{host} . "/api";
+#   if( defined($obj) ) {
+#     $method = 'PUT' if( !$method );
 
-    if( ReadingsVal($name, 'state', '') eq 'pairing' ) {
-      $method = 'POST';
-    } else {
-      $uri .= "/" . AttrVal($name, "key", "");
-    }
-  } else {
-    $uri .= "/" . AttrVal($name, "key", "");
-  }
-  $method = 'GET' if( !$method );
-  if( defined $path) {
-    $uri .= "/" . $path;
-  }
-  #Log3 $name, 3, "Url: " . $uri;
-  Log3 $name, 4, "using deCONZ_HTTP_Request: $method ". ($path?$path:'');
-  my $ret = deCONZ_HTTP_Request(0,$uri,$method,undef,$obj,AttrVal($name,'noshutdown', 1));
-  #Log3 $name, 3, Dumper $ret;
-  if( !defined($ret) ) {
-    return undef;
-  } elsif($ret eq '') {
-    return undef;
-  } elsif($ret =~ /^error:(\d){3}$/) {
-    my %result = { error => "HTTP Error Code $1" };
-    return \%result;
-  }
+#     if( ReadingsVal($name, 'state', '') eq 'pairing' ) {
+#       $method = 'POST';
+#     } else {
+#       $uri .= "/" . AttrVal($name, "key", "");
+#     }
+#   } else {
+#     $uri .= "/" . AttrVal($name, "key", "");
+#   }
+#   $method = 'GET' if( !$method );
+#   if( defined $path) {
+#     $uri .= "/" . $path;
+#   }
+#   #Log3 $name, 3, "Url: " . $uri;
+#   Log3 $name, 4, "using deCONZ_HTTP_Request: $method ". ($path?$path:'');
+#   my $ret = deCONZ_HTTP_Request(0,$uri,$method,undef,$obj,AttrVal($name,'noshutdown', 1));
+#   #Log3 $name, 3, Dumper $ret;
+#   if( !defined($ret) ) {
+#     return undef;
+#   } elsif($ret eq '') {
+#     return undef;
+#   } elsif($ret =~ /^error:(\d){3}$/) {
+#     my %result = { error => "HTTP Error Code $1" };
+#     return \%result;
+#   }
 
-  if( !$ret ) {
-    Log3 $name, 2, "$name: empty answer received for $uri";
-    return undef;
-  } elsif( $ret =~ m'HTTP/1.1 200 OK' ) {
-    Log3 $name, 4, "$name: empty answer received for $uri";
-    return undef;
-  } elsif( $ret !~ m/^[\[{].*[\]}]$/ ) {
-    Log3 $name, 2, "$name: invalid json detected for $uri: $ret";
-    return undef;
-  }
+#   if( !$ret ) {
+#     Log3 $name, 2, "$name: empty answer received for $uri";
+#     return undef;
+#   } elsif( $ret =~ m'HTTP/1.1 200 OK' ) {
+#     Log3 $name, 4, "$name: empty answer received for $uri";
+#     return undef;
+#   } elsif( $ret !~ m/^[\[{].*[\]}]$/ ) {
+#     Log3 $name, 2, "$name: invalid json detected for $uri: $ret";
+#     return undef;
+#   }
 
-  my $decoded = eval { decode_json($ret) };
-  Log3 $name, 2, "$name: json error: $@ in $ret" if( $@ );
+#   my $decoded = eval { decode_json($ret) };
+#   Log3 $name, 2, "$name: json error: $@ in $ret" if( $@ );
 
-  return deCONZ_ProcessResponse($hash, $decoded);
-}
+#   return deCONZ_ProcessResponse($hash, $decoded);
+# }
 
 sub
 deCONZ_HTTP_Call2($$$$;$)
@@ -1442,7 +1445,7 @@ deCONZ_HTTP_Call2($$$$;$)
   #return { state => {reachable => 0 } } if($attr{$name} && $attr{$name}{disable});
 
   my $url = "http://" . $hash->{host} . "/api";
-  my $blocking = $attr{$name}{httpUtils} < 1;
+  my $blocking = 0; # $attr{$name}{httpUtils} < 1;
   $blocking = 1 if( !defined($chash) );
   if( defined($obj) ) {
     $method = 'PUT' if( !$method );

@@ -280,7 +280,7 @@ sub deCONZdevice_Define($$)
 
   my ($name, $type, $id, $interval) = @args;
 
-  $hash->{STATE} = 'Initialized';
+  $hash->{STATE} = 'Initialized' if (!defined $hash->{STATE});
 
   $hash->{ID} = $hash->{helper}->{devtype}.$id;
 
