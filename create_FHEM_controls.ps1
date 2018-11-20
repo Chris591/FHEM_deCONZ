@@ -8,4 +8,4 @@ foreach($file in Get-ChildItem -Path .\FHEM) {
 }
 $Content = $Content.TrimEnd("`n")
 $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
-[System.IO.File]::WriteAllLines($Filename, $Content, $Utf8NoBomEncoding)
+[System.IO.File]::WriteAllText($Filename, $Content, $Utf8NoBomEncoding)
