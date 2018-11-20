@@ -15,7 +15,7 @@ use JSON;
 use SetExtensions;
 
 #require "30_deCONZ.pm";
-#require "$attr{global}{modpath}/FHEM/30_deCONZ.pm";
+#require "$attr{global}{modpath}/FHEM/30_deCONZ.pm"; 
 
 use vars qw(%FW_webArgs); # all arguments specified in the GET
 
