@@ -1053,6 +1053,9 @@ deCONZ_updateGroups($$)
       next if( !$light );
       my $current = $modules{deCONZdevice}{defptr}{"$name-$light"}{helper};
 
+      next if( !$current );
+      next if( $current->{helper}{devtype} );
+
       $readings{ct} += $current->{ct};
       $readings{bri} += $current->{bri};
       $readings{pct} += $current->{pct};
