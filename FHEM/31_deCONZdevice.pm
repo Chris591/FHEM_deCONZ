@@ -240,6 +240,7 @@ deCONZdevice_devStateIcon($)
   return '<div style="width:32px;height:19px;'.
          'border:1px solid #fff;border-radius:8px;background-color:#'.CommandGet("","$name rgb").';"></div>';
 }
+
 sub
 deCONZdevice_summaryFn($$$$)
 {
@@ -303,20 +304,18 @@ sub deCONZdevice_Define($$)
 
   $modules{deCONZdevice}{defptr}{$code} = $hash;
 
-  if( AttrVal($iodev, "pollDevices", 1) ) {
-    $interval = undef unless defined($interval);
-
-  } elsif( !$hash->{helper}->{devtype} ||  $hash->{helper}->{devtype} ne 'G' ) {
-    $interval = 60 unless defined($interval);
-
-  }
+  ###if( AttrVal($iodev, "pollDevices", 1) ) {
+  ###  $interval = undef unless defined($interval);
+  ###} elsif( !$hash->{helper}->{devtype} ||  $hash->{helper}->{devtype} ne 'G' ) {
+  ###  $interval = 60 unless defined($interval);
+  ###}
 
   $args[3] = "" if( !defined( $args[3] ) );
   if( !$hash->{helper}->{devtype} ) {
     $hash->{DEF} = "$id $args[3] IODev=$iodev" if( $iodev );
 
-    $interval = 60 if( defined($interval) && $interval < 10 );
-    $hash->{INTERVAL} = $interval;
+    ###$interval = 60 if( defined($interval) && $interval < 10 );
+    ###$hash->{INTERVAL} = $interval;
 
     $hash->{helper}{on} = -1;
     $hash->{helper}{reachable} = undef;
@@ -340,8 +339,8 @@ sub deCONZdevice_Define($$)
   } elsif( $hash->{helper}->{devtype} eq 'G' ) {
     $hash->{DEF} = "group $id $args[3] IODev=$iodev" if( $iodev );
 
-    $interval = 60 if( defined($interval) && $interval < 10 );
-    $hash->{INTERVAL} = $interval;
+    ###$interval = 60 if( defined($interval) && $interval < 10 );
+    ###$hash->{INTERVAL} = $interval;
 
     $hash->{helper}{all_on} = -1;
     $hash->{helper}{any_on} = -1;
@@ -359,8 +358,8 @@ sub deCONZdevice_Define($$)
   } elsif( $hash->{helper}->{devtype} eq 'S' ) {
     $hash->{DEF} = "sensor $id $args[3] IODev=$iodev" if( $iodev );
 
-    $interval = 60 if( defined($interval) && $interval < 1 );
-    $hash->{INTERVAL} = $interval;
+    ###$interval = 60 if( defined($interval) && $interval < 1 );
+    ###$hash->{INTERVAL} = $interval;
 
   }
 
@@ -602,6 +601,7 @@ deCONZdevice_SetParam($$@)
 
   return 1;
 }
+
 sub deCONZdevice_Set($@);
 sub
 deCONZdevice_Set($@)
@@ -769,19 +769,6 @@ deCONZdevice_Set($@)
     }
   }
 
-#  if( $hash->{helper}->{update_timeout} == -1 ) {
-#    my $diff;
-#    my ($seconds, $microseconds) = gettimeofday();
-#    if( $hash->{helper}->{timestamp} ) {
-#      my ($seconds2, $microseconds2) = @{$hash->{helper}->{timestamp}};
-#
-#      $diff = (($seconds-$seconds2)*1000000 + $microseconds-$microseconds2)/1000;
-#    }
-#    $hash->{helper}->{timestamp} = [$seconds, $microseconds];
-#
-#    return undef if( $diff < 100 );
-#  }
-
   if( scalar keys %obj ) {
     my $result;
     if( $hash->{helper}->{devtype} eq 'G' ) {
@@ -882,7 +869,7 @@ xyYtorgb($$$)
 {
   # calculation from http://www.brucelindbloom.com/index.html
   my ($x,$y,$Y) = @_;
-#Log 3, "xyY:". $x . " " . $y ." ". $Y;
+  #Log 3, "xyY:". $x . " " . $y ." ". $Y;
 
   my $r = 0;
   my $g = 0;
@@ -900,7 +887,7 @@ xyYtorgb($$$)
       $Y /= $f;
       $Z /= $f;
     }
-#Log 3, "XYZ: ". $X . " " . $Y ." ". $Y;
+  #Log 3, "XYZ: ". $X . " " . $Y ." ". $Y;
 
     $r =  0.7982 * $X + 0.3389 * $Y - 0.1371 * $Z;
     $g = -0.5918 * $X + 1.5512 * $Y + 0.0406 * $Z;
@@ -914,7 +901,7 @@ xyYtorgb($$$)
       $g /= $f;
       $b /= $f;
     }
-#Log 3, "rgb: ". $r . " " . $g ." ". $b;
+  #Log 3, "rgb: ". $r . " " . $g ." ". $b;
 
     $r *= 255;
     $g *= 255;
@@ -1037,10 +1024,10 @@ deCONZdevice_GetUpdate($)
   } elsif( $hash->{helper}->{devtype} eq 'S' ) {
   }
 
-  if(!$hash->{LOCAL}) {
-    RemoveInternalTimer($hash);
-    InternalTimer(gettimeofday()+$hash->{INTERVAL}, "deCONZdevice_GetUpdate", $hash, 0) if( $hash->{INTERVAL} );
-  }
+  ###if(!$hash->{LOCAL}) {
+  ###  RemoveInternalTimer($hash);
+  ###  InternalTimer(gettimeofday()+$hash->{INTERVAL}, "deCONZdevice_GetUpdate", $hash, 0) if( $hash->{INTERVAL} );
+  ###}
 
   return undef if( $hash->{helper}->{devtype} eq 'G' );
 
@@ -1649,8 +1636,8 @@ deCONZdevice_Attr($$$;$)
       ignore the reachable state that is reported by the hue bridge. assume the device is allways reachable.</li>
     <li>setList<br>
       The list of know set commands for sensor type devices. one command per line, eg.: <code><br>
-   attr mySensor setList present:{&lt;json&gt;}\<br>
-absent:{&lt;json&gt;}</code></li>
+      attr mySensor setList present:{&lt;json&gt;}\<br>
+      absent:{&lt;json&gt;}</code></li>
     <li>subType<br>
       extcolordimmer -> device has rgb and color temperatur control<br>
       colordimmer -> device has rgb controll<br>
@@ -1661,7 +1648,7 @@ absent:{&lt;json&gt;}</code></li>
       default transitiontime for all set commands if not specified directly in the set.</li>
     <li>delayedUpdate<br>
       1 -> the update of the device status after a set command will be delayed for 1 second. usefull if multiple devices will be switched.
-</li>
+    </li>
     <li>devStateIcon<br>
       will be initialized to <code>{(deCONZdevice_devStateIcon($name),"toggle")}</code> to show device color as default in room overview.</li>
     <li>webCmd<br>

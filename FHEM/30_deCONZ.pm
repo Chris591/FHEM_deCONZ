@@ -33,7 +33,8 @@ sub deCONZ_Initialize($)
   $hash->{GetFn}    = "deCONZ_Get";
   $hash->{AttrFn}   = "deCONZ_Attr";
   $hash->{UndefFn}  = "deCONZ_Undefine";
-  $hash->{AttrList} = "key disable:1 disabledForIntervals createGroupReadings:1,0 httpUtils:1,0 noshutdown:1,0 pollDevices:1,2,0 queryAfterSet:1,0 $readingFnAttributes";
+  $hash->{AttrList} = "key disable:1 createGroupReadings:1,0 noshutdown:1,0 pollDevices:1,2,0 queryAfterSet:1,0 $readingFnAttributes";
+#  $hash->{AttrList} = "key disable:1 disabledForIntervals createGroupReadings:1,0 httpUtils:1,0 noshutdown:1,0 pollDevices:1,2,0 queryAfterSet:1,0 $readingFnAttributes";
 }
 
 sub
@@ -76,7 +77,7 @@ deCONZ_Read($)
 
       my $data = substr($hash->{buf}, $i, $len);
       $hash->{buf} = substr($hash->{buf},$i+$len);
-#Log 1, ">>>$data<<<";
+      #Log 1, ">>>$data<<<";
 
       if( $data eq '?' ) {
         #ignore keepalive
@@ -136,12 +137,12 @@ deCONZ_Read($)
   } elsif( $buf =~ m'^HTTP/1.1 101 Switching Protocols'i )  {
     $hash->{websocket} = 1;
     #my $buf = plex_msg2hash($buf, 1);
-#Log 1, $buf;
+    #Log 1, $buf;
 
     Log3 $name, 3, "$name: websocket: Switching Protocols ok";
 
   } else {
-#Log 1, $buf;
+    #Log 1, $buf;
     $close = 1;
     Log3 $name, 2, "$name: websocket: Switching Protocols failed";
   }
@@ -166,69 +167,30 @@ deCONZ_Write($@)
 }
 
 sub
-deCONZ_Detect($)
-{
-  my ($hash) = @_;
-  my $name = $hash->{NAME};
-  Log3 $name, 3, "deCONZ_Detect";
-
-  my ($err,$ret) = HttpUtils_BlockingGet({
-    url => "http://www.meethue.com/api/nupnp",
-    method => "GET",
-  });
-
-  if( defined($err) && $err ) {
-    Log3 $name, 3, "deCONZ_Detect: error detecting bridge: ".$err;
-    return;
-  }
-
-  my $host = '';
-  if( defined($ret) && $ret ne '' && $ret =~ m/^[\[{].*[\]}]$/ ) {
-    my $obj = eval { decode_json($ret) };
-    Log3 $name, 2, "$name: json error: $@ in $ret" if( $@ );
-
-    if( defined($obj->[0])
-        && defined($obj->[0]->{'internalipaddress'}) ) {
-      $host = $obj->[0]->{'internalipaddress'};
-    }
-  }
-
-  if( !defined($host) || $host eq '' ) {
-    Log3 $name, 3, 'deCONZ_Detect: error detecting bridge.';
-    return;
-  }
-
-  Log3 $name, 3, "deCONZ_Detect: ${host}";
-  $hash->{host} = $host;
-
-  return $host;
-}
-
-sub
 deCONZ_Define($$)
 {
   my ($hash, $def) = @_;
 
   my @args = split("[ \t]+", $def);
 
-  return "Usage: define <name> deCONZ [<host>] [interval]"  if(@args < 2);
+  return "Usage: define <name> deCONZ <host> [interval]"  if(@args < 3);
 
-  my ($name, $type, $host, $interval) = @args;
+  my ($name, $type, $host) = @args;
 
-  if( !defined($host) ) {
-    $hash->{NUPNP} = 1;
-    deCONZ_Detect($hash);
-  } else {
-    delete $hash->{NUPNP};
-  }
+  ###  if( !defined($host) ) {
+  ###    $hash->{NUPNP} = 1;
+  ###    deCONZ_Detect($hash);
+  ###  } else {
+  ###    delete $hash->{NUPNP};
+  ###  }
 
-  $interval= 60 unless defined($interval);
-  if( $interval < 10 ) { $interval = 10; }
+  ###  $interval= 60 unless defined($interval);
+  ###  if( $interval < 10 ) { $interval = 10; }
 
   readingsSingleUpdate($hash, 'state', 'initialized', 1 );
 
   $hash->{host} = $host;
-  $hash->{INTERVAL} = $interval;
+  ###  $hash->{INTERVAL} = $interval;
 
   $attr{$name}{"key"} = join "",map { unpack "H*", chr(rand(256)) } 1..16 unless defined( AttrVal($name, "key", undef) );
 
@@ -247,6 +209,7 @@ deCONZ_Define($$)
 
   return undef;
 }
+
 sub
 deCONZ_Notify($$)
 {
@@ -290,6 +253,7 @@ deCONZ_hash2header($)
 
   return $header;
 }
+
 sub deCONZ_closeWebsocket($)
 {
   my ($hash) = @_;
@@ -338,7 +302,7 @@ sub deCONZ_openWebsocket($)
                                    } );
 
     $ret .= "\r\n";
-#Log 1, $ret;
+    #Log 1, $ret;
 
     syswrite($hash->{CD}, $ret );
 
@@ -356,9 +320,11 @@ sub deCONZ_fillBridgeInfo($$)
   $hash->{name} = $config->{name};
   $hash->{modelid} = $config->{modelid};
   $hash->{swversion} = $config->{swversion};
+  $hash->{fwversion} = $config->{fwversion};
   $hash->{apiversion} = $config->{apiversion};
+  $hash->{mac} = $config->{mac};
 
-  if( defined($config->{websocketport}) ) {
+  if( defined($config->{websocketport}) && ($hash->{websocketport} != $config->{websocketport} || !defined($hash->{PORT})) ) {
     $hash->{websocketport} = $config->{websocketport};
     deCONZ_openWebsocket($hash);
   }
@@ -381,7 +347,7 @@ deCONZ_OpenDev($)
   my ($hash) = @_;
   my $name = $hash->{NAME};
 
-  deCONZ_Detect($hash) if( defined($hash->{NUPNP}) );
+  ###deCONZ_Detect($hash) if( defined($hash->{NUPNP}) );
 
   my ($err,$ret) = HttpUtils_BlockingGet({
     url => "http://$hash->{host}/description.xml",
@@ -414,7 +380,7 @@ deCONZ_OpenDev($)
       return;
     }
 
-  $hash->{mac} = $result->{'mac'};
+  
 
   readingsSingleUpdate($hash, 'state', 'connected', 1 );
   deCONZ_GetUpdate($hash);
@@ -423,6 +389,7 @@ deCONZ_OpenDev($)
 
   return undef;
 }
+
 sub deCONZ_Pair($)
 {
   my ($hash) = @_;
@@ -723,18 +690,18 @@ deCONZ_Set($@)
 
     return "created sensor id $result->{success}{id}" if( $result->{success} );
 
-#    if( $result->{success} ) {
-#      my $code = $name ."-S". $result->{success}{id};
-#      my $devname = "deCONZdevice" . $id;
-#      $devname = $name ."_". $devname if( $hash->{helper}{count} );
-#      my $define = "$devname deCONZdevice sensor $id IODev=$name";
-#
-#      Log3 $name, 4, "$name: create new device '$devname' for address '$id'";
-#
-#      my $cmdret= CommandDefine(undef,$define);
-#
-#      return "created $modules{deCONZdevice}{defptr}{$code}->{NAME}" if( defined($modules{deCONZdevice}{defptr}{$code}) );
-#    }
+    #    if( $result->{success} ) {
+    #      my $code = $name ."-S". $result->{success}{id};
+    #      my $devname = "deCONZdevice" . $id;
+    #      $devname = $name ."_". $devname if( $hash->{helper}{count} );
+    #      my $define = "$devname deCONZdevice sensor $id IODev=$name";
+    #
+    #      Log3 $name, 4, "$name: create new device '$devname' for address '$id'";
+    #
+    #      my $cmdret= CommandDefine(undef,$define);
+    #
+    #      return "created $modules{deCONZdevice}{defptr}{$code}->{NAME}" if( defined($modules{deCONZdevice}{defptr}{$code}) );
+    #    }
 
     return undef;
 
@@ -970,10 +937,10 @@ deCONZ_GetUpdate($)
   my ($hash) = @_;
   my $name = $hash->{NAME};
 
-  if(!$hash->{LOCAL}) {
-    RemoveInternalTimer($hash);
-    InternalTimer(gettimeofday()+$hash->{INTERVAL}, "deCONZ_GetUpdate", $hash, 0);
-  }
+  ###  if(!$hash->{LOCAL}) {
+  ###    RemoveInternalTimer($hash);
+  ###    InternalTimer(gettimeofday()+$hash->{INTERVAL}, "deCONZ_GetUpdate", $hash, 0);
+  ###  }
 
   if( $hash->{websocketport} && !$hash->{PORT} ) {
     deCONZ_openWebsocket($hash);
@@ -1022,6 +989,7 @@ my %dim_values = (
   13 => "dim87%",
   14 => "dim93%",
 );
+
 sub
 deCONZ_updateGroups($$)
 {
@@ -1362,95 +1330,10 @@ deCONZ_Call($$$$;$)
   my $json = undef;
   $json = encode_json($obj) if $obj;
 
-  # @TODO: remove the repeat twice?
-  # for( my $attempt=0; $attempt<2; $attempt++ ) {
-    # my $blocking;
-    my $res = undef;
-    # if( !defined($attr{$name}{httpUtils}) ) {
-    #   $blocking = 1;
-    #   $res = deCONZ_HTTP_Call($hash,$path,$json,$method);
-    # } else {
-      # $blocking = $attr{$name}{httpUtils} < 1;
-      $res = deCONZ_HTTP_Call2($hash,$chash,$path,$json,$method);
-    # }
-
-    return $res;# if( !$blocking || defined($res) );
-
-    # Log3 $name, 3, "deCONZ_Call: failed, retrying";
-    # deCONZ_Detect($hash) if( defined($hash->{NUPNP}) );
-  # }
-
-  # Log3 $name, 3, "deCONZ_Call: failed";
-  # return undef;
-}
-
-# #JSON RPC over HTTP
-# sub
-# deCONZ_HTTP_Call($$$;$)
-# {
-#   my ($hash,$path,$obj,$method) = @_;
-#   my $name = $hash->{NAME};
-
-#   #return { state => {reachable => 0 } } if($attr{$name} && $attr{$name}{disable});
-
-#   my $uri = "http://" . $hash->{host} . "/api";
-#   if( defined($obj) ) {
-#     $method = 'PUT' if( !$method );
-
-#     if( ReadingsVal($name, 'state', '') eq 'pairing' ) {
-#       $method = 'POST';
-#     } else {
-#       $uri .= "/" . AttrVal($name, "key", "");
-#     }
-#   } else {
-#     $uri .= "/" . AttrVal($name, "key", "");
-#   }
-#   $method = 'GET' if( !$method );
-#   if( defined $path) {
-#     $uri .= "/" . $path;
-#   }
-#   #Log3 $name, 3, "Url: " . $uri;
-#   Log3 $name, 4, "using deCONZ_HTTP_Request: $method ". ($path?$path:'');
-#   my $ret = deCONZ_HTTP_Request(0,$uri,$method,undef,$obj,AttrVal($name,'noshutdown', 1));
-#   #Log3 $name, 3, Dumper $ret;
-#   if( !defined($ret) ) {
-#     return undef;
-#   } elsif($ret eq '') {
-#     return undef;
-#   } elsif($ret =~ /^error:(\d){3}$/) {
-#     my %result = { error => "HTTP Error Code $1" };
-#     return \%result;
-#   }
-
-#   if( !$ret ) {
-#     Log3 $name, 2, "$name: empty answer received for $uri";
-#     return undef;
-#   } elsif( $ret =~ m'HTTP/1.1 200 OK' ) {
-#     Log3 $name, 4, "$name: empty answer received for $uri";
-#     return undef;
-#   } elsif( $ret !~ m/^[\[{].*[\]}]$/ ) {
-#     Log3 $name, 2, "$name: invalid json detected for $uri: $ret";
-#     return undef;
-#   }
-
-#   my $decoded = eval { decode_json($ret) };
-#   Log3 $name, 2, "$name: json error: $@ in $ret" if( $@ );
-
-#   return deCONZ_ProcessResponse($hash, $decoded);
-# }
-
-sub
-deCONZ_HTTP_Call2($$$$;$)
-{
-  my ($hash,$chash,$path,$obj,$method) = @_;
-  my $name = $hash->{NAME};
-
-  #return { state => {reachable => 0 } } if($attr{$name} && $attr{$name}{disable});
-
   my $url = "http://" . $hash->{host} . "/api";
   my $blocking = 0; # $attr{$name}{httpUtils} < 1;
   $blocking = 1 if( !defined($chash) );
-  if( defined($obj) ) {
+  if( defined($json) ) {
     $method = 'PUT' if( !$method );
 
     if( ReadingsVal($name, 'state', '') eq 'pairing' ) {
@@ -1469,7 +1352,7 @@ deCONZ_HTTP_Call2($$$$;$)
   }
   #Log3 $name, 3, "Url: " . $url;
 
-#Log 2, $path;
+  #Log 2, $path;
   if( $blocking ) {
     Log3 $name, 4, "using HttpUtils_BlockingGet: $method ". ($path?$path:'');
 
@@ -1479,7 +1362,7 @@ deCONZ_HTTP_Call2($$$$;$)
       method => $method,
       noshutdown => AttrVal($name,'noshutdown', 1),
       header => "Content-Type: application/json",
-      data => $obj,
+      data => $json,
     });
 
     if( !$data ) {
@@ -1493,13 +1376,13 @@ deCONZ_HTTP_Call2($$$$;$)
       return undef;
     }
 
-    my $json = eval { decode_json($data) };
+    my $retunjson = eval { decode_json($data) };
     Log3 $name, 2, "$name: json error: $@ in $data" if( $@ );
-    return undef if( !$json );
+    return undef if( !$retunjson );
 
-    return deCONZ_ProcessResponse($hash, $json);
+    return deCONZ_ProcessResponse($hash, $retunjson);
 
-    deCONZ_dispatch( {hash=>$hash,chash=>$chash,type=>$path},$err,$data );
+  ###    deCONZ_dispatch( {hash=>$hash,chash=>$chash,type=>$path},$err,$data );
   } else {
     Log3 $name, 4, "using HttpUtils_NonblockingGet: $method ". ($path?$path:'');
 
@@ -1509,7 +1392,7 @@ deCONZ_HTTP_Call2($$$$;$)
       method => $method,
       noshutdown => AttrVal($name,'noshutdown', 1),
       header => "Content-Type: application/json",
-      data => $obj,
+      data => $json,
       hash => $hash,
       chash => $chash,
       type => $path,
@@ -1532,10 +1415,7 @@ deCONZ_dispatch($$$;$)
   if( $err ) {
     Log3 $name, 2, "$name: http request failed: $err";
   } elsif( $data || $json ) {
-    if( !$data && !$json ) {
-      Log3 $name, 2, "$name: empty answer received";
-      return undef;
-    } elsif( $data && $data !~ m/^[\[{].*[\]}]$/ ) {
+    if( $data && $data !~ m/^[\[{].*[\]}]$/ ) {
       Log3 $name, 2, "$name: invalid json detected: $data";
       return undef;
     }
@@ -1543,7 +1423,7 @@ deCONZ_dispatch($$$;$)
     my $queryAfterSet = AttrVal( $name,'queryAfterSet', 1 );
 
     if( !$json ) {
-      $json = eval { decode_json($data) } if( !$json );
+      $json = eval { decode_json($data) };
       Log3 $name, 2, "$name: json error: $@ in $data" if( $@ );
     }
     return undef if( !$json );
@@ -1669,101 +1549,14 @@ deCONZ_dispatch($$$;$)
   }
 }
 
-#adapted version of the CustomGetFileFromURL subroutine from HttpUtils.pm
-sub
-deCONZ_HTTP_Request($$$@)
-{
-  my ($quiet, $url, $method, $timeout, $data, $noshutdown) = @_;
-  $timeout = 4.0 if(!defined($timeout));
-
-  my $displayurl= $quiet ? "<hidden>" : $url;
-  if($url !~ /^(http|https):\/\/([^:\/]+)(:\d+)?(\/.*)$/) {
-    Log3 undef, 1, "deCONZ_HTTP_Request $displayurl: malformed or unsupported URL";
-    return undef;
-  }
-
-  my ($protocol,$host,$port,$path)= ($1,$2,$3,$4);
-
-  if(defined($port)) {
-    $port =~ s/^://;
-  } else {
-    $port = ($protocol eq "https" ? 443: 80);
-  }
-  $path= '/' unless defined($path);
-
-
-  my $conn;
-  if($protocol eq "https") {
-    eval "use IO::Socket::SSL";
-    if($@) {
-      Log3 undef, 1, $@;
-    } else {
-      $conn = IO::Socket::SSL->new(PeerAddr=>"$host:$port", Timeout=>$timeout);
-    }
-  } else {
-    $conn = IO::Socket::INET->new(PeerAddr=>"$host:$port", Timeout=>$timeout);
-  }
-  if(!$conn) {
-    Log3 undef, 1, "deCONZ_HTTP_Request $displayurl: Can't connect to $protocol://$host:$port";
-    undef $conn;
-    return undef;
-  }
-
-  $host =~ s/:.*//;
-  #my $hdr = ($data ? "POST" : "GET")." $path HTTP/1.0\r\nHost: $host\r\n";
-  my $hdr = $method." $path HTTP/1.0\r\nHost: $host\r\n";
-  if(defined($data)) {
-    $hdr .= "Content-Length: ".length($data)."\r\n";
-    $hdr .= "Content-Type: application/json";
-  }
-  $hdr .= "\r\n\r\n";
-  syswrite $conn, $hdr;
-  syswrite $conn, $data if(defined($data));
-  shutdown $conn, 1 if(!$noshutdown);
-
-  my ($buf, $ret) = ("", "");
-  $conn->timeout($timeout);
-  for(;;) {
-    my ($rout, $rin) = ('', '');
-    vec($rin, $conn->fileno(), 1) = 1;
-    my $nfound = select($rout=$rin, undef, undef, $timeout);
-    if($nfound <= 0) {
-      Log3 undef, 1, "deCONZ_HTTP_Request $displayurl: Select timeout/error: $!";
-      undef $conn;
-      return undef;
-    }
-
-    my $len = sysread($conn,$buf,65536);
-    last if(!defined($len) || $len <= 0);
-    $ret .= $buf;
-  }
-
-  $ret=~ s/(.*?)\r\n\r\n//s; # Not greedy: switch off the header.
-  my @header= split("\r\n", $1);
-  my $hostpath= $quiet ? "<hidden>" : $host . $path;
-  Log3 undef, 5, "deCONZ_HTTP_Request $displayurl: Got data, length: ".length($ret);
-  if(!length($ret)) {
-    Log3 undef, 4, "deCONZ_HTTP_Request $displayurl: Zero length data, header follows...";
-    for (@header) {
-        Log3 undef, 4, "deCONZ_HTTP_Request $displayurl: $_";
-    }
-  }
-  undef $conn;
-  if($header[0] =~ /^[^ ]+ ([\d]{3})/ && $1 != 200) {
-    my %result = { error => "error: $1" };
-    return \%result;
-  }
-  return $ret;
-}
-
 sub
 deCONZ_Attr($$$)
 {
   my ($cmd, $name, $attrName, $attrVal) = @_;
 
   my $orig = $attrVal;
-  $attrVal = int($attrVal) if($attrName eq "interval");
-  $attrVal = 60 if($attrName eq "interval" && $attrVal < 60 && $attrVal != 0);
+  ###  $attrVal = int($attrVal) if($attrName eq "interval");
+  ###  $attrVal = 60 if($attrName eq "interval" && $attrVal < 60 && $attrVal != 0);
 
   if( $attrName eq "disable" ) {
     my $hash = $defs{$name};
@@ -1774,17 +1567,17 @@ deCONZ_Attr($$$)
       readingsSingleUpdate($hash, 'state', 'active', 1 );
       deCONZ_OpenDev($hash);
     }
-  } elsif( $attrName eq "disabledForIntervals" ) {
-    my $hash = $defs{$name};
-    if( $cmd eq 'set' ) {
-      $attr{$name}{$attrName} = $attrVal;
-    } else {
-      $attr{$name}{$attrName} = "";
-    }
-
-    readingsSingleUpdate($hash, 'state', IsDisabled($name)?'disabled':'active', 1 );
-    deCONZ_OpenDev($hash) if( !IsDisabled($name) );
-
+  ###  } elsif( $attrName eq "disabledForIntervals" ) {
+  ###    my $hash = $defs{$name};
+  ###    if( $cmd eq 'set' ) {
+  ###      $attr{$name}{$attrName} = $attrVal;
+  ###    } else {
+  ###      $attr{$name}{$attrName} = "";
+  ###    }
+  ###
+  ###    readingsSingleUpdate($hash, 'state', IsDisabled($name)?'disabled':'active', 1 );
+  ###    deCONZ_OpenDev($hash) if( !IsDisabled($name) );
+  ###
   }
 
   if( $cmd eq 'set' ) {
@@ -1826,7 +1619,7 @@ deCONZ_Attr($$$)
   <a name="deCONZ_Define"></a>
   <b>Define</b>
   <ul>
-    <code>define &lt;name&gt; deCONZ [&lt;host&gt;] [&lt;interval&gt;]</code><br>
+    <code>define &lt;name&gt; deCONZ &lt;host&gt; [&lt;interval&gt;]</code><br>
     <br>
 
     Defines a deCONZ device with address &lt;host&gt;.<br><br>
